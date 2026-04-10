@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCoverflow, Pagination, Navigation, Autoplay } from 'swiper/modules';
 import 'swiper/css';
@@ -6,11 +6,66 @@ import 'swiper/css/effect-coverflow';
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
 
+import heic2any from 'heic2any';
+
 const PHOTO_COUNT = 10;
+const EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'heic'];
+
+function probeImage(basePath) {
+  return new Promise((resolve) => {
+    let tried = 0;
+    let resolved = false;
+
+    const checkDone = () => {
+      tried++;
+      if (tried === EXTENSIONS.length && !resolved) resolve(null);
+    };
+
+    for (const ext of EXTENSIONS) {
+      const src = `${basePath}.${ext}`;
+      
+      if (ext === 'heic') {
+        fetch(src)
+          .then(async (res) => {
+            // Check if Vite served index.html SPA fallback instead of a real image
+            const contentType = res.headers.get('content-type');
+            if (res.ok && contentType && !contentType.includes('text/html')) {
+              try {
+                const blob = await res.blob();
+                if (!resolved) {
+                  resolved = true;
+                  const convertedBlob = await heic2any({ blob, toType: 'image/jpeg' });
+                  const finalBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+                  resolve(URL.createObjectURL(finalBlob));
+                }
+              } catch (e) {
+                // If it fails, unlock and treat as failed attempt
+                resolved = false;
+                checkDone();
+              }
+            } else {
+              checkDone();
+            }
+          })
+          .catch(checkDone);
+      } else {
+        const img = new Image();
+        img.onload = () => {
+          if (!resolved) {
+            resolved = true;
+            resolve(src);
+          }
+        };
+        img.onerror = checkDone;
+        img.src = src;
+      }
+    }
+  });
+}
 
 const photos = Array.from({ length: PHOTO_COUNT }, (_, i) => ({
   id: i + 1,
-  src: `/photos/photo-${i + 1}.jpg`,
+  basePath: `/photos/photo-${i + 1}`,
   alt: `Ảnh cô Uyên ${i + 1}`,
 }));
 
@@ -62,6 +117,15 @@ function PhotoLightbox({ photo, onClose }) {
 
 export default function PhotoGallery() {
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  // Map of photo.id -> resolved src (string) or null (not found)
+  const [resolvedSrcs, setResolvedSrcs] = useState({});
+
+  useEffect(() => {
+    photos.forEach(async (photo) => {
+      const src = await probeImage(photo.basePath);
+      setResolvedSrcs((prev) => ({ ...prev, [photo.id]: src }));
+    });
+  }, []);
 
   return (
     <section
@@ -114,58 +178,76 @@ export default function PhotoGallery() {
           navigation={true}
           className="photo-swiper"
         >
-          {photos.map((photo) => (
-            <SwiperSlide key={photo.id} className="w-[300px]! md:w-[380px]!">
-              <div
-                className="relative rounded-2xl overflow-hidden shadow-xl mx-auto cursor-pointer group"
-                style={{
-                  aspectRatio: '3 / 4',
-                  background: 'linear-gradient(135deg, #FFC8DD 0%, #FFE29A 50%, #FFB3C6 100%)',
-                }}
-                onClick={() => setLightboxPhoto(photo)}
-              >
-                <img
-                  src={photo.src}
-                  alt={photo.alt}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.parentElement.querySelector('.placeholder')?.classList.remove('hidden');
-                  }}
-                />
-                {/* Placeholder when image not found */}
-                <div className="placeholder absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                  <span className="text-6xl mb-4">📷</span>
-                  <p className="font-bold text-lg" style={{ color: '#4A3728' }}>
-                    Ảnh {photo.id}
-                  </p>
-                  <p className="text-sm mt-1" style={{ color: '#8B7355' }}>
-                    Thêm ảnh vào<br />
-                    <code className="text-xs bg-white/50 px-2 py-0.5 rounded mt-1 inline-block">
-                      public/photos/photo-{photo.id}.jpg
-                    </code>
-                  </p>
-                </div>
+          {photos.map((photo) => {
+            const resolvedSrc = resolvedSrcs[photo.id];
+            const isProbing = resolvedSrc === undefined;
+            const isFailed = resolvedSrc === null;
+            const hasImage = typeof resolvedSrc === 'string';
 
-                {/* Hover overlay */}
+            return (
+              <SwiperSlide key={photo.id} className="w-[300px]! md:w-[380px]!">
                 <div
-                  className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{ background: 'rgba(0,0,0,0.15)' }}
-                >
-                  <span className="text-4xl drop-shadow-lg">🔍</span>
-                </div>
-
-                {/* Gradient overlay bottom */}
-                <div
-                  className="absolute bottom-0 left-0 right-0 h-16"
+                  className="relative rounded-2xl overflow-hidden shadow-xl mx-auto cursor-pointer group"
                   style={{
-                    background: 'linear-gradient(transparent, rgba(255, 133, 162, 0.15))',
+                    aspectRatio: '3 / 4',
+                    background: 'linear-gradient(135deg, #FFC8DD 0%, #FFE29A 50%, #FFB3C6 100%)',
                   }}
-                />
-              </div>
-            </SwiperSlide>
-          ))}
+                  onClick={() => hasImage && setLightboxPhoto({ ...photo, src: resolvedSrc })}
+                >
+                  {/* Image */}
+                  {hasImage && (
+                    <img
+                      src={resolvedSrc}
+                      alt={photo.alt}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  )}
+
+                  {/* Placeholder when no image or still probing */}
+                  {(isFailed || isProbing) && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                      <span className="text-6xl mb-4">📷</span>
+                      <p className="font-bold text-lg" style={{ color: '#4A3728' }}>
+                        Ảnh {photo.id}
+                      </p>
+                      {isFailed && (
+                        <p className="text-sm mt-1" style={{ color: '#8B7355' }}>
+                          Thêm ảnh vào thư mục<br />
+                          <code className="text-xs bg-white/50 px-2 py-0.5 rounded mt-1 inline-block">
+                            public/photos/photo-{photo.id}.(jpg|png|...)
+                          </code>
+                        </p>
+                      )}
+                      {isProbing && (
+                        <p className="text-sm mt-2 opacity-50 flex items-center justify-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-current animate-ping"></span>
+                          Đang tải...
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {hasImage && (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      style={{ background: 'rgba(0,0,0,0.15)' }}
+                    >
+                      <span className="text-4xl drop-shadow-lg">🔍</span>
+                    </div>
+                  )}
+
+                  {/* Gradient overlay bottom */}
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-16"
+                    style={{
+                      background: 'linear-gradient(transparent, rgba(255, 133, 162, 0.15))',
+                    }}
+                  />
+                </div>
+              </SwiperSlide>
+            );
+          })}
         </Swiper>
       </div>
 
