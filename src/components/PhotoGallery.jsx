@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCoverflow, Pagination, Navigation, Autoplay } from 'swiper/modules';
 import 'swiper/css';
@@ -13,7 +14,55 @@ const photos = Array.from({ length: PHOTO_COUNT }, (_, i) => ({
   alt: `Ảnh cô Uyên ${i + 1}`,
 }));
 
+function PhotoLightbox({ photo, onClose }) {
+  if (!photo) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        backdropFilter: 'blur(10px)',
+      }}
+      onClick={onClose}
+    >
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-6 right-6 w-12 h-12 rounded-full flex items-center justify-center
+                   text-2xl text-white/80 hover:text-white bg-white/10 hover:bg-white/20
+                   transition-all cursor-pointer z-10"
+        aria-label="Đóng"
+      >
+        ✕
+      </button>
+
+      {/* Image */}
+      <div
+        className="relative max-w-4xl max-h-[85vh] animate-bounce-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img
+          src={photo.src}
+          alt={photo.alt}
+          className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+        />
+
+        {/* Photo number badge */}
+        <div
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-sm font-bold text-white/90"
+          style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
+        >
+          📷 Ảnh {photo.id} / {PHOTO_COUNT}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PhotoGallery() {
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
+
   return (
     <section
       id="gallery"
@@ -68,16 +117,17 @@ export default function PhotoGallery() {
           {photos.map((photo) => (
             <SwiperSlide key={photo.id} className="w-[300px]! md:w-[380px]!">
               <div
-                className="relative rounded-2xl overflow-hidden shadow-xl mx-auto"
+                className="relative rounded-2xl overflow-hidden shadow-xl mx-auto cursor-pointer group"
                 style={{
                   aspectRatio: '3 / 4',
                   background: 'linear-gradient(135deg, #FFC8DD 0%, #FFE29A 50%, #FFB3C6 100%)',
                 }}
+                onClick={() => setLightboxPhoto(photo)}
               >
                 <img
                   src={photo.src}
                   alt={photo.alt}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   loading="lazy"
                   onError={(e) => {
                     e.target.style.display = 'none';
@@ -98,6 +148,14 @@ export default function PhotoGallery() {
                   </p>
                 </div>
 
+                {/* Hover overlay */}
+                <div
+                  className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{ background: 'rgba(0,0,0,0.15)' }}
+                >
+                  <span className="text-4xl drop-shadow-lg">🔍</span>
+                </div>
+
                 {/* Gradient overlay bottom */}
                 <div
                   className="absolute bottom-0 left-0 right-0 h-16"
@@ -110,6 +168,14 @@ export default function PhotoGallery() {
           ))}
         </Swiper>
       </div>
+
+      {/* Photo Lightbox */}
+      {lightboxPhoto && (
+        <PhotoLightbox
+          photo={lightboxPhoto}
+          onClose={() => setLightboxPhoto(null)}
+        />
+      )}
     </section>
   );
 }

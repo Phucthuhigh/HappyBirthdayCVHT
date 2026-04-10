@@ -159,8 +159,8 @@ function RevealedLetter({ wish, onClose }) {
               color: 'white',
             }}
           >
-            <span>💌</span>
-            {wish.name}
+            <span>{(!wish.name || wish.name === 'Ẩn danh') ? '🕵️' : '💌'}</span>
+            {wish.name || 'Ẩn danh'}
           </div>
         </div>
 

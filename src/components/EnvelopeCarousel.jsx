@@ -135,10 +135,11 @@ export default function EnvelopeCarousel({ wishes, onSelect }) {
                   {/* Author name */}
                   <div className="absolute bottom-4 left-4 right-4 text-center">
                     <p
-                      className="text-sm font-bold truncate"
+                      className="text-sm font-bold truncate flex items-center justify-center gap-1"
                       style={{ color: 'rgba(255,255,255,0.9)', textShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
                     >
-                      {wish.name}
+                      {(!wish.name || wish.name === 'Ẩn danh') && <span>🕵️</span>}
+                      {wish.name || 'Ẩn danh'}
                     </p>
                   </div>
 
