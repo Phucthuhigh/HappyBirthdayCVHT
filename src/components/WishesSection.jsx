@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchWishes } from '../services/googleSheets';
-import { sampleWishes } from '../data/sampleWishes';
+import { wishes as fallbackWishes } from '../data/wishes';
 import EnvelopeCarousel from './EnvelopeCarousel';
 import EnvelopeReveal from './EnvelopeReveal';
 
@@ -18,12 +18,12 @@ export default function WishesSection() {
         if (data && data.length > 0) {
           setWishes(data);
         } else {
-          setWishes(sampleWishes);
+          setWishes(fallbackWishes);
           setUsingSample(true);
         }
       } catch (err) {
         console.error('Failed to fetch wishes:', err);
-        setWishes(sampleWishes);
+        setWishes(fallbackWishes);
         setUsingSample(true);
       } finally {
         setLoading(false);

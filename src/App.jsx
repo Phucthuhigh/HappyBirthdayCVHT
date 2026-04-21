@@ -3,6 +3,7 @@ import FloatingHearts from './components/FloatingHearts';
 import ConfettiEffect from './components/ConfettiEffect';
 import HeroSection from './components/HeroSection';
 import PhotoGallery from './components/PhotoGallery';
+import VideoSection from './components/VideoSection';
 import WishesSection from './components/WishesSection';
 import Footer from './components/Footer';
 
@@ -27,6 +28,7 @@ export default function App() {
       <main>
         <HeroSection />
         <PhotoGallery />
+        <VideoSection />
         <WishesSection />
       </main>
 

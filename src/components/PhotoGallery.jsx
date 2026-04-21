@@ -8,7 +8,7 @@ import 'swiper/css/navigation';
 
 import heic2any from 'heic2any';
 
-const PHOTO_COUNT = 10;
+const PHOTO_COUNT = 3;
 const EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'heic'];
 
 function probeImage(basePath) {
@@ -23,7 +23,7 @@ function probeImage(basePath) {
 
     for (const ext of EXTENSIONS) {
       const src = `${basePath}.${ext}`;
-      
+
       if (ext === 'heic') {
         fetch(src)
           .then(async (res) => {
@@ -178,14 +178,14 @@ export default function PhotoGallery() {
           navigation={true}
           className="photo-swiper"
         >
-          {photos.map((photo) => {
+          {(photos.length <= 3 ? [...photos, ...photos, ...photos] : photos).map((photo, index) => {
             const resolvedSrc = resolvedSrcs[photo.id];
             const isProbing = resolvedSrc === undefined;
             const isFailed = resolvedSrc === null;
             const hasImage = typeof resolvedSrc === 'string';
 
             return (
-              <SwiperSlide key={photo.id} className="w-[300px]! md:w-[380px]!">
+              <SwiperSlide key={`${photo.id}-${index}`} className="w-[300px]! md:w-[380px]!">
                 <div
                   className="relative rounded-2xl overflow-hidden shadow-xl mx-auto cursor-pointer group"
                   style={{
